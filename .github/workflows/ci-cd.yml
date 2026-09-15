@@ -1,0 +1,64 @@
+name: CI/CD Mini-Bank
+
+# CONCETTO: quando far partire questo workflow.
+# Qui: ad ogni push sul branch main.
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    # CONCETTO — matrix build: questa lista dice a GitHub
+    # "esegui tutti gli step sotto, una volta per ciascun valore qui elencato".
+    # Aggiungere un ottavo servizio in futuro = aggiungere una riga qui,
+    # nessun altro cambiamento al file.
+    strategy:
+      matrix:
+        service:
+          - account-service
+          - customer-service
+          - transaction-service
+          - notification-service
+          - api-gateway
+          - eureka-server
+          - config-server
+
+    steps:
+      # SINTASSI: scarica il codice della repo dentro il runner.
+      # Senza questo step, il runner è una macchina vuota senza il tuo codice.
+      - name: Checkout codice
+        uses: actions/checkout@v4
+
+      # SINTASSI: installa Java 21 sul runner (pulito, senza nulla di tuo).
+      - name: Setup JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      # CONCETTO: ${{ matrix.service }} viene sostituito, ad ogni esecuzione
+      # parallela, col valore corrente della lista sopra (es. account-service).
+      # -f punta al pom.xml dentro la cartella di quel modulo specifico,
+      # dato che non c'è un pom padre nella root.
+      - name: Build e test - ${{ matrix.service }}
+        run: mvn -f ${{ matrix.service }}/pom.xml clean verify
+
+      # SINTASSI: login su Docker Hub usando i Secrets configurati.
+      - name: Login su Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # CONCETTO: costruisce l'immagine usando il Dockerfile già presente
+      # in ogni cartella servizio (lo stesso multi-stage che hai già scritto),
+      # e la invia a Docker Hub con un tag riconoscibile.
+      - name: Build e push immagine Docker - ${{ matrix.service }}
+        uses: docker/build-push-action@v5
+        with:
+          context: ./${{ matrix.service }}
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest

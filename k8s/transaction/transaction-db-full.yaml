@@ -1,0 +1,80 @@
+# ============================================
+# PERSISTENT VOLUME CLAIM — la richiesta di storage
+# ============================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: transaction-db-pvc
+spec:
+  # CONCETTO: come vuoi che lo storage sia utilizzabile.
+  # ReadWriteOnce = un solo Pod alla volta può scrivere — corretto per un DB,
+  # che non deve mai essere scritto da due istanze diverse contemporaneamente.
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+# ============================================
+# DEPLOYMENT — il Pod di Postgres
+# ============================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transaction-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: transaction-db
+  template:
+    metadata:
+      labels:
+        app: transaction-db
+    spec:
+      containers:
+        - name: transaction-db
+          image: postgres:16
+          ports:
+            - containerPort: 5432
+          # CONCETTO: stesso meccanismo già visto — prende TUTTE le chiavi
+          # del ConfigMap e del Secret creati prima, le inietta come env var.
+          # Serve ANCHE POSTGRES_DB, che manca in entrambi: lo aggiungiamo diretto qui.
+          envFrom:
+            - configMapRef:
+                name: transaction-db-config
+            - secretRef:
+                name: transaction-db-secret
+          env:
+            - name: POSTGRES_DB
+              value: transaction_db
+          # CONCETTO: qui il Pod dichiara DOVE, dentro il suo filesystem,
+          # vuole "agganciare" lo storage persistente — stesso percorso fisso
+          # dell'immagine Postgres già visto in Compose.
+          volumeMounts:
+            - name: transaction-db-storage
+              mountPath: /var/lib/postgresql/data
+      # CONCETTO: qui il Pod dichiara QUALE PVC vuole usare per quel mount.
+      # "transaction-db-storage" è solo un nome interno che collega volumeMounts
+      # (sopra) a questa dichiarazione (qui) — non è il nome della PVC stessa.
+      volumes:
+        - name: transaction-db-storage
+          persistentVolumeClaim:
+            claimName: transaction-db-pvc
+
+---
+# ============================================
+# SERVICE — nome stabile per raggiungere il DB
+# ============================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: transaction-db
+spec:
+  selector:
+    app: transaction-db
+  ports:
+    - port: 5432
+      targetPort: 5432
+  type: ClusterIP

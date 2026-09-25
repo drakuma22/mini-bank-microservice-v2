@@ -1,0 +1,38 @@
+# ============================================
+# DEPLOYMENT — config-server
+# ============================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: config-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: config-server
+  template:
+    metadata:
+      labels:
+        app: config-server
+    spec:
+      containers:
+        - name: config-server
+          image: finalfantasy22x/config-server:latest
+          ports:
+            - containerPort: 8888
+
+---
+# ============================================
+# SERVICE — nome stabile per raggiungere config-server
+# ============================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: config-server
+spec:
+  selector:
+    app: config-server
+  ports:
+    - port: 8888
+      targetPort: 8888
+  type: ClusterIP

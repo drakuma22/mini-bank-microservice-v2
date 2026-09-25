@@ -1,0 +1,31 @@
+# SINTASSI: Ingress ha una sua apiVersion, diversa da Deployment e Service.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+
+metadata:
+  name: api-gateway-ingress
+
+spec:
+  # CONCETTO: indica QUALE Ingress Controller deve applicare queste regole.
+  # "nginx" è quello appena attivato con l'addon di Minikube.
+  ingressClassName: nginx
+
+  rules:
+    # CONCETTO: nessun "host" specificato = la regola vale per qualunque
+    # hostname con cui arriva la richiesta. Ci basta, perché abbiamo
+    # un solo servizio da esporre.
+    - http:
+        paths:
+          # CONCETTO: "/" con Prefix = TUTTE le richieste, qualunque path.
+          # Il routing verso account/customer/ecc. lo fa poi api-gateway
+          # stesso, a livello applicativo, tramite Eureka.
+          - path: /
+            pathType: Prefix
+            backend:
+              # CONCETTO: l'Ingress punta al Service (nome + porta),
+              # mai direttamente ai Pod. Da qui in poi è il solito
+              # meccanismo: ClusterIP, poi kube-proxy, poi Pod.
+              service:
+                name: api-gateway
+                port:
+                  number: 8080

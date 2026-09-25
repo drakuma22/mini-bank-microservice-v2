@@ -1,0 +1,59 @@
+# ============================================
+# DEPLOYMENT — account-service
+# ============================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+    spec:
+      containers:
+        - name: notification-service
+          image: finalfantasy22x/notification-service:latest
+          ports:
+            - containerPort: 8080
+          env:
+            # CONCETTO: qui NON possiamo usare envFrom come per il DB —
+            # le chiavi di ConfigMap/Secret (POSTGRES_USER, POSTGRES_PASSWORD)
+            # non coincidono con i nomi che Spring Boot si aspetta
+            # (SPRING_DATASOURCE_USERNAME, SPRING_DATASOURCE_PASSWORD).
+            # valueFrom permette di "rimappare" la singola chiave.
+            - name: SPRING_DATASOURCE_URL
+              # CONCETTO: "notification-db" qui è il nome del Service Postgres —
+              # K8s risolve questo hostname via DNS interno del cluster,
+              # niente IP hardcoded.
+              value: jdbc:postgresql://notification-db:5432/notification_db
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                configMapKeyRef:
+                  name: notification-db-config
+                  key: POSTGRES_USER
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: notification-db-secret
+                  key: POSTGRES_PASSWORD
+
+---
+# ============================================
+# SERVICE — nome stabile per raggiungere notification-service
+# ============================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service
+spec:
+  selector:
+    app: notification-service
+  ports:
+    - port: 8084
+      targetPort: 8084
+  type: ClusterIP

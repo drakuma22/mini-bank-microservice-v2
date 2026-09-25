@@ -1,0 +1,33 @@
+# SINTASSI: apiVersion diversa da Deployment — ogni "tipo" di oggetto K8s
+# ha la propria coppia apiVersion/kind, da imparare per i tipi che userai spesso.
+apiVersion: v1
+kind: Service
+
+metadata:
+  # CONCETTO IMPORTANTE: questo nome diventa un hostname risolvibile
+  # dentro il cluster — esattamente come il nome di un servizio in
+  # docker-compose.yml (es. "api-gateway:8080" funzionava perché
+  # Compose crea un DNS interno basato sui nomi dei servizi).
+  # Kubernetes fa la stessa cosa, ma basata sul nome del Service, non del Pod.
+  name: api-gateway
+
+spec:
+  # CONCETTO — selector: ESATTAMENTE lo stesso meccanismo del Deployment.
+  # Il Service non "conosce" i Pod per nome — li trova cercando questa label.
+  # Deve combaciare con "template.metadata.labels" nel Deployment.
+  selector:
+    app: api-gateway
+
+  ports:
+    # CONCETTO: due porte diverse, con ruoli diversi.
+    # port = la porta su cui il Service stesso è raggiungibile
+    # targetPort = la porta su cui il container dentro il Pod ascolta davvero
+    # (di solito coincidono, ma non devono per forza — qui restano uguali
+    # perché api-gateway ascolta su 8080, la porta configurata in Spring)
+    - port: 8080
+      targetPort: 8080
+
+  # CONCETTO — type: ClusterIP anche se api-gateway è il punto d'ingresso.
+  # Non lo esponiamo direttamente: sarà l'Ingress Controller a ricevere
+  # il traffico esterno e a inoltrarlo a questo ClusterIP.
+  type: ClusterIP

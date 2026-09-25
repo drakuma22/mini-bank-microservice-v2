@@ -1,0 +1,43 @@
+# SINTASSI: ogni manifest K8s dichiara quale "tipo" di oggetto sta descrivendo.
+# apiVersion + kind sono la coppia che identifica il tipo — per un Deployment
+# è sempre così, valori fissi da imparare a memoria per i tipi che userai spesso.
+apiVersion: apps/v1
+kind: Deployment
+
+# CONCETTO: metadata è l'identità dell'oggetto stesso (il Deployment),
+# non ancora dei Pod che creerà. "name" è come lo chiamerai con kubectl.
+metadata:
+  name: eureka-server
+
+spec:
+  # CONCETTO CHIAVE: quante copie del Pod vuoi sempre attive.
+  # Questo è il numero che il controller manager sorveglia costantemente
+  # (il "loop" di cui parlavamo: stato desiderato vs stato reale).
+  replicas: 1
+
+  # CONCETTO — selector: dice al Deployment QUALI Pod sono "suoi".
+  # Deve combaciare ESATTAMENTE con le label scritte sotto in template.metadata.labels.
+  # È lo stesso meccanismo di label/selector visto nel diagramma di prima.
+  selector:
+    matchLabels:
+      app: eureka-server
+
+  # CONCETTO: template descrive COME DEVE ESSERE FATTO ogni Pod che il
+  # Deployment crea — è come uno stampino, non un Pod già esistente.
+  template:
+    metadata:
+      # Questa è la label che il Pod avrà DAVVERO una volta creato —
+      # deve combaciare col selector sopra, altrimenti il Deployment
+      # non riconoscerebbe come "suoi" i Pod che lui stesso ha creato.
+      labels:
+        app: eureka-server
+    spec:
+      containers:
+        # SINTASSI: nome del container dentro il Pod (a tua scelta).
+        - name: eureka-server
+          # CONCETTO: l'immagine da usare — la stessa che la pipeline CI/CD
+          # ha già costruito e pubblicato su Docker Hub in Fase 2.
+          # Qui NON si builda nulla, si scarica un'immagine già pronta.
+          image: finalfantasy22x/eureka-server:latest
+          ports:
+            - containerPort: 8761

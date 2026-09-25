@@ -1,0 +1,59 @@
+# ============================================
+# DEPLOYMENT — account-service
+# ============================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transaction-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: transaction-service
+  template:
+    metadata:
+      labels:
+        app: transaction-service
+    spec:
+      containers:
+        - name: transaction-service
+          image: finalfantasy22x/transaction-service:latest
+          ports:
+            - containerPort: 8080
+          env:
+            # CONCETTO: qui NON possiamo usare envFrom come per il DB —
+            # le chiavi di ConfigMap/Secret (POSTGRES_USER, POSTGRES_PASSWORD)
+            # non coincidono con i nomi che Spring Boot si aspetta
+            # (SPRING_DATASOURCE_USERNAME, SPRING_DATASOURCE_PASSWORD).
+            # valueFrom permette di "rimappare" la singola chiave.
+            - name: SPRING_DATASOURCE_URL
+              # CONCETTO: "transaction-db" qui è il nome del Service Postgres —
+              # K8s risolve questo hostname via DNS interno del cluster,
+              # niente IP hardcoded.
+              value: jdbc:postgresql://transaction-db:5432/transaction_db
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                configMapKeyRef:
+                  name: transaction-db-config
+                  key: POSTGRES_USER
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: transaction-db-secret
+                  key: POSTGRES_PASSWORD
+
+---
+# ============================================
+# SERVICE — nome stabile per raggiungere transaction-service
+# ============================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: transaction-service
+spec:
+  selector:
+    app: transaction-service
+  ports:
+    - port: 8083
+      targetPort: 8083
+  type: ClusterIP

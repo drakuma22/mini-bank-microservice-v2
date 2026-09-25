@@ -1,0 +1,66 @@
+# ============================================
+# DEPLOYMENT — customer-service
+# ============================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: customer-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: customer-service
+  template:
+    metadata:
+      labels:
+        app: customer-service
+    spec:
+      containers:
+        - name: customer-service
+          image: finalfantasy22x/customer-service:latest
+          ports:
+            - containerPort: 8080
+          env:
+            # CONCETTO: qui NON possiamo usare envFrom come per il DB —
+            # le chiavi di ConfigMap/Secret (POSTGRES_USER, POSTGRES_PASSWORD)
+            # non coincidono con i nomi che Spring Boot si aspetta
+            # (SPRING_DATASOURCE_USERNAME, SPRING_DATASOURCE_PASSWORD).
+            # valueFrom permette di "rimappare" la singola chiave.
+            - name: SPRING_DATASOURCE_URL
+              # CONCETTO: "customer-db" qui è il nome del Service Postgres —
+              # K8s risolve questo hostname via DNS interno del cluster,
+              # niente IP hardcoded.
+              value: jdbc:postgresql://customer-db:5432/customer_db
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                configMapKeyRef:
+                  name: customer-db-config
+                  key: POSTGRES_USER
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: customer-db-secret
+                  key: POSTGRES_PASSWORD
+            - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+              # CONCETTO: stesso principio — "eureka-server" è il nome del
+              # Service, non un IP. Se il Pod di eureka muore e ne parte uno
+              # nuovo con IP diverso, questo nome continua a funzionare.
+              value: http://eureka-server:8761/eureka
+            - name: EUREKA_INSTANCE_PREFERIPADDRESS
+              value: "true"
+
+---
+# ============================================
+# SERVICE — nome stabile per raggiungere customer-service
+# ============================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: customer-service
+spec:
+  selector:
+    app: customer-service
+  ports:
+    - port: 8082
+      targetPort: 8082
+  type: ClusterIP

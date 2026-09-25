@@ -1,0 +1,64 @@
+# ============================================
+# DEPLOYMENT — account-service
+# ============================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: account-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: account-service
+  template:
+    metadata:
+      labels:
+        app: account-service
+    spec:
+      containers:
+        - name: account-service
+          image: finalfantasy22x/account-service:latest
+          ports:
+            - containerPort: 8080
+          env:
+            # CONCETTO: qui NON possiamo usare envFrom come per il DB —
+            # le chiavi di ConfigMap/Secret (POSTGRES_USER, POSTGRES_PASSWORD)
+            # non coincidono con i nomi che Spring Boot si aspetta
+            # (SPRING_DATASOURCE_USERNAME, SPRING_DATASOURCE_PASSWORD).
+            # valueFrom permette di "rimappare" la singola chiave.
+            - name: SPRING_DATASOURCE_URL
+              # CONCETTO: "account-db" qui è il nome del Service Postgres —
+              # K8s risolve questo hostname via DNS interno del cluster,
+              # niente IP hardcoded.
+              value: jdbc:postgresql://account-db:5432/account_db
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                configMapKeyRef:
+                  name: account-db-config
+                  key: POSTGRES_USER
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: account-db-secret
+                  key: POSTGRES_PASSWORD
+            - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+              # CONCETTO: stesso principio — "eureka-server" è il nome del
+              # Service, non un IP. Se il Pod di eureka muore e ne parte uno
+              # nuovo con IP diverso, questo nome continua a funzionare.
+              value: http://eureka-server:8761/eureka
+
+---
+# ============================================
+# SERVICE — nome stabile per raggiungere account-service
+# ============================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: account-service
+spec:
+  selector:
+    app: account-service
+  ports:
+    - port: 8081
+      targetPort: 8081
+  type: ClusterIP

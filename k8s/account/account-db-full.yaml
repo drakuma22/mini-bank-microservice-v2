@@ -1,0 +1,80 @@
+# ============================================
+# PERSISTENT VOLUME CLAIM — la richiesta di storage
+# ============================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: account-db-pvc
+spec:
+  # CONCETTO: come vuoi che lo storage sia utilizzabile.
+  # ReadWriteOnce = un solo Pod alla volta può scrivere — corretto per un DB,
+  # che non deve mai essere scritto da due istanze diverse contemporaneamente.
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+# ============================================
+# DEPLOYMENT — il Pod di Postgres
+# ============================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: account-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: account-db
+  template:
+    metadata:
+      labels:
+        app: account-db
+    spec:
+      containers:
+        - name: account-db
+          image: postgres:16
+          ports:
+            - containerPort: 5432
+          # CONCETTO: stesso meccanismo già visto — prende TUTTE le chiavi
+          # del ConfigMap e del Secret creati prima, le inietta come env var.
+          # Serve ANCHE POSTGRES_DB, che manca in entrambi: lo aggiungiamo diretto qui.
+          envFrom:
+            - configMapRef:
+                name: account-db-config
+            - secretRef:
+                name: account-db-secret
+          env:
+            - name: POSTGRES_DB
+              value: account_db
+          # CONCETTO: qui il Pod dichiara DOVE, dentro il suo filesystem,
+          # vuole "agganciare" lo storage persistente — stesso percorso fisso
+          # dell'immagine Postgres già visto in Compose.
+          volumeMounts:
+            - name: account-db-storage
+              mountPath: /var/lib/postgresql/data
+      # CONCETTO: qui il Pod dichiara QUALE PVC vuole usare per quel mount.
+      # "account-db-storage" è solo un nome interno che collega volumeMounts
+      # (sopra) a questa dichiarazione (qui) — non è il nome della PVC stessa.
+      volumes:
+        - name: account-db-storage
+          persistentVolumeClaim:
+            claimName: account-db-pvc
+
+---
+# ============================================
+# SERVICE — nome stabile per raggiungere il DB
+# ============================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: account-db
+spec:
+  selector:
+    app: account-db
+  ports:
+    - port: 5432
+      targetPort: 5432
+  type: ClusterIP

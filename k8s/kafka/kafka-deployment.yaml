@@ -1,0 +1,64 @@
+# SINTASSI: ogni manifest K8s dichiara quale "tipo" di oggetto sta descrivendo.
+# apiVersion + kind sono la coppia che identifica il tipo — per un Deployment
+# è sempre così, valori fissi da imparare a memoria per i tipi che userai spesso.
+apiVersion: apps/v1
+kind: Deployment
+
+# CONCETTO: metadata è l'identità dell'oggetto stesso (il Deployment),
+# non ancora dei Pod che creerà. "name" è come lo chiamerai con kubectl.
+metadata:
+  name: kafka
+
+spec:
+  # CONCETTO CHIAVE: quante copie del Pod vuoi sempre attive.
+  # Questo è il numero che il controller manager sorveglia costantemente
+  # (il "loop" di cui parlavamo: stato desiderato vs stato reale).
+  replicas: 1
+
+  # CONCETTO — selector: dice al Deployment QUALI Pod sono "suoi".
+  # Deve combaciare ESATTAMENTE con le label scritte sotto in template.metadata.labels.
+  # È lo stesso meccanismo di label/selector visto nel diagramma di prima.
+  selector:
+    matchLabels:
+      app: kafka
+
+  # CONCETTO: template descrive COME DEVE ESSERE FATTO ogni Pod che il
+  # Deployment crea — è come uno stampino, non un Pod già esistente.
+  template:
+    metadata:
+      # Questa è la label che il Pod avrà DAVVERO una volta creato —
+      # deve combaciare col selector sopra, altrimenti il Deployment
+      # non riconoscerebbe come "suoi" i Pod che lui stesso ha creato.
+      labels:
+        app: kafka
+    spec:
+      # BUG RISOLTO: Kubernetes inietta automaticamente, in OGNI Pod,
+      # una variabile d'ambiente per OGNI Service già esistente nel namespace,
+      # col formato <NOME_SERVICE>_PORT (es. il Service "kafka" genera KAFKA_PORT).
+      # L'immagine Confluent legge OGNI variabile che inizia con "KAFKA_" e la
+      # traduce in una proprietà di configurazione — KAFKA_PORT veniva letta al
+      # posto delle impostazioni volute, con un valore tipo "tcp://IP:9092"
+      # che Kafka non riusciva a interpretare come porta numerica -> crash
+      # immediato (exit code 1, troppo veloce per loggare l'errore vero).
+      # enableServiceLinks: false disattiva questa iniezione automatica per
+      # questo Pod — necessario ogni volta che il nome di un Service coincide
+      # con il prefisso delle variabili d'ambiente lette dall'immagine.
+      enableServiceLinks: false
+      containers:
+        # SINTASSI: nome del container dentro il Pod (a tua scelta).
+        - name: kafka
+          # CONCETTO: l'immagine da usare — la stessa che la pipeline CI/CD
+          # ha già costruito e pubblicato su Docker Hub in Fase 2.
+          # Qui NON si builda nulla, si scarica un'immagine già pronta.
+          image: confluentinc/cp-kafka:7.5.0
+          ports:
+            - containerPort: 9092
+          env:
+            - name: KAFKA_BROKER_ID
+              value: "1"
+            - name: KAFKA_ZOOKEEPER_CONNECT
+              value: "zookeeper:2181"
+            - name: KAFKA_ADVERTISED_LISTENERS
+              value: "PLAINTEXT://kafka:9092"
+            - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+              value: "1"

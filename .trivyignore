@@ -1,0 +1,5 @@
+# CVE-2026-47884 - spring-webmvc, Remote Code Execution tramite XsltView.
+# Non applicabile: i servizi sono API REST JSON e non usano XsltView.
+# Correzione disponibile solo con Spring Framework 7 (Spring Boot 4):
+# migrazione pianificata come attività separata.
+CVE-2026-47884 exp:2027-01-31

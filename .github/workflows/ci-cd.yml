@@ -1,10 +1,12 @@
 name: CI/CD Mini-Bank
 
 # CONCETTO: quando far partire questo workflow.
-# Qui: ad ogni push sul branch main.
+# Qui: Qui: ad ogni push su main e ad ogni pull request verso main.
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   build-and-push:
@@ -48,17 +50,34 @@ jobs:
 
       # SINTASSI: login su Docker Hub usando i Secrets configurati.
       - name: Login su Docker Hub
+        if: github.event_name == 'push'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       # CONCETTO: costruisce l'immagine usando il Dockerfile già presente
-      # in ogni cartella servizio (lo stesso multi-stage che hai già scritto),
-      # e la invia a Docker Hub con un tag riconoscibile.
-      - name: Build e push immagine Docker - ${{ matrix.service }}
+      - name: Build immagine Docker - ${{ matrix.service }}
         uses: docker/build-push-action@v5
         with:
           context: ./${{ matrix.service }}
-          push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest
+          load: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:${{ github.sha }}
+
+      # 2. Scansiona: se trova HIGH o CRITICAL non accettate, la pipeline fallisce
+      - name: Scansione vulnerabilità - ${{ matrix.service }}
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:${{ github.sha }}
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          trivyignores: .trivyignore
+
+      # 3. Pubblica solo su push in main, e solo se la scansione è passata
+      - name: Push su Docker Hub - ${{ matrix.service }}
+        if: github.event_name == 'push'
+        run: |
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:${{ github.sha }}

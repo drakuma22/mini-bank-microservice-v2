@@ -17,6 +17,7 @@ jobs:
     # Aggiungere un ottavo servizio in futuro = aggiungere una riga qui,
     # nessun altro cambiamento al file.
     strategy:
+      fail-fast: false
       matrix:
         service:
           - account-service

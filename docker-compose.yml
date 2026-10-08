@@ -1,3 +1,5 @@
+name: mini-bank-microservices-v2
+
 services:
 
   account-db:

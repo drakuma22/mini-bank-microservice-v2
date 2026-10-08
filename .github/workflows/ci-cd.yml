@@ -5,8 +5,7 @@ name: CI/CD Mini-Bank
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build-and-push:
@@ -17,6 +16,7 @@ jobs:
     # Aggiungere un ottavo servizio in futuro = aggiungere una riga qui,
     # nessun altro cambiamento al file.
     strategy:
+      fail-fast: false
       matrix:
         service:
           - account-service

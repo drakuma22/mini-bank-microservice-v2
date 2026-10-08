@@ -22,6 +22,7 @@
         <jackson-bom.version>2.21.7</jackson-bom.version>
         <postgresql.version>42.7.12</postgresql.version>
         <httpcore5.version>5.4.3</httpcore5.version>
+        <freemarker.version>2.3.35</freemarker.version>
     </properties>
 
     <dependencyManagement>

@@ -1,0 +1,4 @@
+# CONCETTO: la "carta d'identità" del chart. È come le prime righe del pom.xml.
+apiVersion: v2            # formato del chart (v2 = quello moderno)
+name: customer-service    # nome del chart
+version: 0.1.0            # versione del CHART (dei template), non dell'applicazione

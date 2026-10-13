@@ -1,29 +1,13 @@
 # ============================================
-# PERSISTENT VOLUME CLAIM — la richiesta di storage
-# ============================================
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: customer-db-pvc
-spec:
-  # CONCETTO: come vuoi che lo storage sia utilizzabile.
-  # ReadWriteOnce = un solo Pod alla volta può scrivere — corretto per un DB,
-  # che non deve mai essere scritto da due istanze diverse contemporaneamente.
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 1Gi
-
----
-# ============================================
-# DEPLOYMENT — il Pod di Postgres
+# STATEFULSET — il Pod di Postgres, con identità e volume stabili
 # ============================================
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: customer-db
 spec:
+  # CONCETTO: il Service che "governa" lo StatefulSet.
+  serviceName: customer-db
   replicas: 1
   selector:
     matchLabels:
@@ -38,9 +22,6 @@ spec:
           image: postgres:16
           ports:
             - containerPort: 5432
-          # CONCETTO: stesso meccanismo già visto — prende TUTTE le chiavi
-          # del ConfigMap e del Secret creati prima, le inietta come env var.
-          # Serve ANCHE POSTGRES_DB, che manca in entrambi: lo aggiungiamo diretto qui.
           envFrom:
             - configMapRef:
                 name: customer-db-config
@@ -49,19 +30,26 @@ spec:
           env:
             - name: POSTGRES_DB
               value: customer_db
-          # CONCETTO: qui il Pod dichiara DOVE, dentro il suo filesystem,
-          # vuole "agganciare" lo storage persistente — stesso percorso fisso
-          # dell'immagine Postgres già visto in Compose.
+            # I dati in una sottocartella del volume: necessario sui dischi del cloud.
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          # CONCETTO: DOVE, nel filesystem del container, agganciare lo storage.
+          # Il nome deve corrispondere a quello del volumeClaimTemplate qui sotto.
           volumeMounts:
-            - name: customer-db-storage
+            - name: customer-db-data
               mountPath: /var/lib/postgresql/data
-      # CONCETTO: qui il Pod dichiara QUALE PVC vuole usare per quel mount.
-      # "customer-db-storage" è solo un nome interno che collega volumeMounts
-      # (sopra) a questa dichiarazione (qui) — non è il nome della PVC stessa.
-      volumes:
-        - name: customer-db-storage
-          persistentVolumeClaim:
-            claimName: customer-db-pvc
+  # CONCETTO: uno "stampo" di PVC. Lo StatefulSet crea da solo un PVC per ogni
+  # replica, chiamato <nome-template>-<nome-pod>: customer-db-data-customer-db-0.
+  # Sostituisce sia il blocco PVC scritto a mano sia la sezione volumes.
+  volumeClaimTemplates:
+    - metadata:
+        name: customer-db-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
 
 ---
 # ============================================

@@ -1,0 +1,43 @@
+# ============================================
+# CRONJOB — backup automatico e periodico di customer-db
+# ============================================
+# CONCETTO: un CronJob non fa il lavoro da solo. A ogni orario stabilito
+# crea un Job nuovo, identico a quello scritto a mano prima.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: customer-db-backup-cron
+spec:
+  # CONCETTO: quando partire, con la sintassi cron di Linux:
+  # minuto  ora  giorno-mese  mese  giorno-settimana
+  # "*/2 * * * *" = ogni 2 minuti → solo per il TEST, così vediamo subito il risultato.
+  # In un progetto vero sarebbe, per esempio, "0 2 * * *" = tutte le notti alle 2:00.
+  schedule: "*/2 * * * *"
+
+  # CONCETTO: se il backup precedente è ancora in corso, non farne partire un altro.
+  # Due pg_dump insieme sullo stesso DB non servono a niente.
+  concurrencyPolicy: Forbid
+
+  # CONCETTO: quanti Job vecchi tenere in elenco (per leggerne i log).
+  # Il resto viene cancellato automaticamente.
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+
+  # CONCETTO: da qui in giù è il "modello" del Job.
+  # È lo stesso contenuto di customer-db-backup-job.yaml, spostato sotto jobTemplate.
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: backup
+              image: postgres:16
+              command: ["pg_dump", "-h", "customer-db", "-U", "minibank", "-d", "customer_db"]
+              env:
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: customer-db-secret
+                      key: POSTGRES_PASSWORD

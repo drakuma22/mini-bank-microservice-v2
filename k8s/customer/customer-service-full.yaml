@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: customer-service
-          image: finalfantasy22x/customer-service:latest
+          image: finalfantasy22x/customer-service:af134bf22b072c1a6d0c91df2674bef17ca1b510
           ports:
             - containerPort: 8080
           env:
@@ -48,6 +48,31 @@ spec:
               value: http://eureka-server:8761/eureka
             - name: EUREKA_INSTANCE_PREFERIPADDRESS
               value: "true"
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8082
+            periodSeconds: 5
+            failureThreshold: 24
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8082
+            periodSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8082
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "100m"
+            limits:
+              memory: "768Mi"
+              cpu: "1"
 
 ---
 # ============================================

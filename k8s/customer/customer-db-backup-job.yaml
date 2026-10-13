@@ -1,0 +1,50 @@
+# ============================================
+# JOB — backup una tantum del database customer-db
+# ============================================
+# CONCETTO: un Deployment/StatefulSet tiene un Pod SEMPRE vivo.
+# Un Job invece esegue un compito, lo porta a termine e si ferma (stato "Completed").
+# Questo Job NON fa parte del database: si collega da fuori,
+# esattamente come fa customer-service, usando il Service "customer-db".
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: customer-db-backup
+spec:
+  # CONCETTO: quante volte riprovare se il backup fallisce.
+  # 2 = al massimo 2 nuovi tentativi, poi il Job viene segnato come Failed.
+  backoffLimit: 2
+
+  # CONCETTO: pulizia automatica. 600 secondi (10 minuti) dopo la fine,
+  # Kubernetes cancella il Job e il suo Pod (e quindi anche i log).
+  # Senza questa riga resterebbero lì per sempre.
+  ttlSecondsAfterFinished: 600
+
+  template:
+    spec:
+      # CONCETTO: obbligatorio nei Job (un Job non può usare "Always").
+      # Never = se il container fallisce non viene riavviato nello stesso Pod:
+      # il Job crea un Pod nuovo (fino a backoffLimit).
+      restartPolicy: Never
+
+      containers:
+        - name: backup
+          # CONCETTO: stessa immagine del database, ci serve solo perché
+          # contiene il programma pg_dump. Nessun database parte qui dentro.
+          image: postgres:16
+
+          # CONCETTO: il comando eseguito al posto del normale avvio di Postgres.
+          # -h customer-db  → host = nome del Service (DNS interno del cluster)
+          # -U minibank     → utente del database
+          # -d customer_db  → nome del database
+          # Il risultato (il dump SQL) viene scritto sullo standard output,
+          # quindi lo leggeremo con "kubectl logs".
+          command: ["pg_dump", "-h", "customer-db", "-U", "minibank", "-d", "customer_db"]
+
+          env:
+            # CONCETTO: pg_dump non chiede la password se trova la variabile PGPASSWORD.
+            # La prendiamo dal Secret già esistente, senza scriverla in chiaro.
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: customer-db-secret
+                  key: POSTGRES_PASSWORD

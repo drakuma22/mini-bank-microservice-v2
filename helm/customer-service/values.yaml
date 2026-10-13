@@ -1,0 +1,10 @@
+# CONCETTO: tutto ciò che cambia da un rilascio all'altro o da un ambiente all'altro.
+# Per rilasciare una nuova versione si modifica SOLO questo file.
+replicaCount: 1
+
+image:
+  repository: finalfantasy22x/customer-service
+  tag: af134bf22b072c1a6d0c91df2674bef17ca1b510
+
+resources:
+  memoryLimit: 768Mi

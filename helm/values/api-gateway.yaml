@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: finalfantasy22x/api-gateway
-  tag: bc833df90f1a793dc8c558f3f62279d918e5bbdf
+  tag: d5223929f0dad71055a3168b2d065915459412fb
 
 port: 8080
 

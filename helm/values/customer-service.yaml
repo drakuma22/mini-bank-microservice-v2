@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: finalfantasy22x/customer-service
-  tag: af134bf22b072c1a6d0c91df2674bef17ca1b510
+  tag: d5223929f0dad71055a3168b2d065915459412fb
 
 port: 8082
 

@@ -1,0 +1,17 @@
+replicaCount: 1
+
+image:
+  repository: finalfantasy22x/api-gateway
+  tag: bc833df90f1a793dc8c558f3f62279d918e5bbdf
+
+port: 8080
+
+resources:            # taglia s
+  requests:
+    memory: 384Mi
+    cpu: 100m
+  limits:
+    memory: 512Mi
+    cpu: "1"
+
+env: []

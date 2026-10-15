@@ -1,0 +1,33 @@
+replicaCount: 1
+
+image:
+  repository: finalfantasy22x/customer-service
+  tag: af134bf22b072c1a6d0c91df2674bef17ca1b510
+
+port: 8082
+
+resources:            # taglia M
+  requests:
+    memory: 512Mi
+    cpu: 100m
+  limits:
+    memory: 768Mi
+    cpu: "1"
+
+env:
+  - name: SPRING_DATASOURCE_URL
+    value: jdbc:postgresql://customer-db:5432/customer_db
+  - name: SPRING_DATASOURCE_USERNAME
+    valueFrom:
+      configMapKeyRef:
+        name: customer-db-config
+        key: POSTGRES_USER
+  - name: SPRING_DATASOURCE_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: customer-db-secret
+        key: POSTGRES_PASSWORD
+  - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+    value: http://eureka-server:8761/eureka
+  - name: EUREKA_INSTANCE_PREFERIPADDRESS
+    value: "true"

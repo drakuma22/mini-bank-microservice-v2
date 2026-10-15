@@ -5,4 +5,12 @@ spring:
   application:
     name: notification-service
   config:
-    import: optional:configserver:http://config-server:8888
+    import: configserver:http://config-server:8888
+  cloud:
+    config:
+      fail-fast: true          # se non trova il config-server: errore, non "parto lo stesso"
+      retry:
+        initial-interval: 2000 # primo tentativo dopo 2 secondi
+        multiplier: 1.5        # ogni attesa è 1,5 volte la precedente
+        max-interval: 10000    # mai più di 10 secondi di attesa
+        max-attempts: 10       # 10 tentativi, poi si arrende

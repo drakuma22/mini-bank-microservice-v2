@@ -1,7 +1,7 @@
 package com.minibank.accountservice.service;
 
-import com.fasterxml.jackson.core.JacksonException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import com.minibank.accountservice.entity.Account;
 import com.minibank.accountservice.repository.AccountRepository;
 import lombok.RequiredArgsConstructor;

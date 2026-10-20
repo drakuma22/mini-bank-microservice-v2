@@ -3,7 +3,6 @@ package com.minibank.transactionservice.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
 import org.springframework.boot.http.client.ClientHttpRequestFactorySettings;
-import org.springframework.cloud.client.loadbalancer.LoadBalanced;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.ClientHttpRequestFactory;
@@ -13,12 +12,6 @@ import java.time.Duration;
 
 @Configuration
 public class RestClientConfig {
-
-    @Bean
-    @LoadBalanced
-    public RestClient.Builder loadBalancedRestClientBuilder() {
-        return RestClient.builder();
-    }
 
     @Bean
     public RestClient accountRestClient(@Value("${account-service.url}") String accountServiceUrl,

@@ -24,7 +24,6 @@ jobs:
           - transaction-service
           - notification-service
           - api-gateway
-          - eureka-server
           - config-server
 
     steps:

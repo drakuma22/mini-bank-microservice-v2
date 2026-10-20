@@ -16,7 +16,7 @@ spring:
         max-attempts: 10
 
 account-service:
-  url: http://account-service
+  url: http://account-service:8081
 
 resilience4j:
   retry:
@@ -39,7 +39,5 @@ resilience4j:
   thread-pool-bulkhead:
     instances:
       transferOperation:
-        max-thread-pool-size: 15
-        core-thread-pool-size: 8
-        queue-capacity: 20
-        keep-alive-duration: 20ms
+        max-concurrent-calls: 15     # al massimo 15 trasferimenti contemporanei
+        max-wait-duration: 100ms     # il 16° aspetta fino a 100ms un posto libero, poi viene rifiutato

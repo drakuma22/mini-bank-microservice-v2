@@ -28,7 +28,7 @@ public class TransactionService {
     private final TransactionProducer transactionProducer;
     private final RedisTemplate<String, String> redisTemplate;
 
-    @Bulkhead(name = "transferOperation", type = Bulkhead.Type.THREADPOOL)
+    @Bulkhead(name = "transferOperation")
     public Transaction execute(String fromAccountNumber,
                                String toAccountNumber,
                                BigDecimal amount,

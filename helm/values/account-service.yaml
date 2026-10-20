@@ -27,7 +27,3 @@ env:
       secretKeyRef:
         name: account-db-secret
         key: POSTGRES_PASSWORD
-  - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
-    value: http://eureka-server:8761/eureka
-  - name: EUREKA_INSTANCE_PREFERIPADDRESS
-    value: "true"

@@ -18,8 +18,3 @@ spring:
       properties:
         spring.json.trusted.packages: "*"
         spring.json.value.default.type: com.minibank.notificationservice.event.TransactionEvent
-
-eureka:
-  client:
-    service-url:
-      defaultZone: http://eureka-server:8761/eureka/

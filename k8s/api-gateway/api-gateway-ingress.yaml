@@ -18,7 +18,8 @@ spec:
         paths:
           # CONCETTO: "/" con Prefix = TUTTE le richieste, qualunque path.
           # Il routing verso account/customer/ecc. lo fa poi api-gateway
-          # stesso, a livello applicativo, tramite Eureka.
+          # stesso, a livello applicativo, verso i Service Kubernetes
+          # (es. http://customer-service:8082).
           - path: /
             pathType: Prefix
             backend:

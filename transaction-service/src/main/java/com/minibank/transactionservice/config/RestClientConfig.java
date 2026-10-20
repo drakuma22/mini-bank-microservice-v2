@@ -2,7 +2,7 @@ package com.minibank.transactionservice.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
-import org.springframework.boot.http.client.ClientHttpRequestFactorySettings;
+import org.springframework.boot.http.client.HttpClientSettings;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.ClientHttpRequestFactory;
@@ -15,9 +15,9 @@ public class RestClientConfig {
 
     @Bean
     public RestClient accountRestClient(@Value("${account-service.url}") String accountServiceUrl,
-                                        RestClient.Builder loadBalancedRestClientBuilder) {
+                                        RestClient.Builder restClientBuilder) {
 
-        ClientHttpRequestFactorySettings settings = ClientHttpRequestFactorySettings
+        HttpClientSettings settings = HttpClientSettings
                 .defaults()
                 .withConnectTimeout(Duration.ofSeconds(3))
                 .withReadTimeout(Duration.ofSeconds(5));
@@ -26,7 +26,7 @@ public class RestClientConfig {
                 .detect()
                 .build(settings);
 
-        return loadBalancedRestClientBuilder
+        return restClientBuilder
                 .baseUrl(accountServiceUrl)
                 .requestFactory(factory)
                 .defaultHeader("Content-Type", "application/json")
@@ -37,9 +37,9 @@ public class RestClientConfig {
 
     //    @Bean
     //    public RestClient customerRestClient(@Value("${customer-service.url}") String customerServiceUrl,
-    //                                        RestClient.Builder loadBalancedRestClientBuilder) {
+    //                                        RestClient.Builder restClientBuilder) {
     //
-    //        ClientHttpRequestFactorySettings settings = ClientHttpRequestFactorySettings
+    //        HttpClientSettings settings = HttpClientSettings
     //                .defaults()
     //                .withConnectTimeout(Duration.ofSeconds(3))
     //                .withReadTimeout(Duration.ofSeconds(5));
@@ -48,7 +48,7 @@ public class RestClientConfig {
     //                .detect()
     //                .build(settings);
     //
-    //        return loadBalancedRestClientBuilder
+    //        return restClientBuilder
     //                .baseUrl(customerServiceUrl)
     //                .requestFactory(factory)
     //                .defaultHeader("Content-Type", "application/json")

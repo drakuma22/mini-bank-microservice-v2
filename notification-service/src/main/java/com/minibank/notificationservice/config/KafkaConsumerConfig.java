@@ -1,6 +1,6 @@
 package com.minibank.notificationservice.config;
 
-import com.fasterxml.jackson.core.JsonParseException;
+import tools.jackson.core.JacksonException;
 import com.minibank.notificationservice.event.TransactionEvent;
 import io.micrometer.core.instrument.config.validate.ValidationException;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -15,7 +15,7 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
-import org.springframework.kafka.support.serializer.JsonDeserializer;
+import org.springframework.kafka.support.serializer.JacksonJsonDeserializer;
 import org.springframework.util.backoff.FixedBackOff;
 
 import java.util.HashMap;
@@ -29,16 +29,14 @@ public class KafkaConsumerConfig {
 
     @Bean
     public ConsumerFactory<String, TransactionEvent> consumerFactory() {
-        JsonDeserializer<TransactionEvent> deserializer =
-                new JsonDeserializer<>(TransactionEvent.class, false);
+        JacksonJsonDeserializer<TransactionEvent> deserializer =
+                new JacksonJsonDeserializer<>(TransactionEvent.class, false);
         deserializer.addTrustedPackages("*");
 
         Map<String, Object> config = new HashMap<>();
         config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         config.put(ConsumerConfig.GROUP_ID_CONFIG, "notification-group");
         config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-        config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
 
         return new DefaultKafkaConsumerFactory<>(config, new StringDeserializer(), deserializer);
     }
@@ -62,7 +60,7 @@ public class KafkaConsumerConfig {
         );
 
         errorHandler.addNotRetryableExceptions(
-                JsonParseException.class,
+                JacksonException.class,
                 ValidationException.class
         );
 

@@ -7,7 +7,7 @@ RUN mvn clean package -DskipTests
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
-RUN addgroup -S app && adduser -S app -G app
+RUN apk upgrade --no-cache && addgroup -S app && adduser -S app -G app
 USER app
 COPY --from=builder /build/target/transaction-service-1.0.0-SNAPSHOT.jar app.jar
 EXPOSE 8083

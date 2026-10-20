@@ -1,6 +1,6 @@
 package com.minibank.accountservice.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.JacksonException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.minibank.accountservice.entity.Account;
 import com.minibank.accountservice.repository.AccountRepository;
@@ -62,7 +62,7 @@ public class AccountService {
             log.info("IDEMPOTENT HIT — key {} già processata, nessun update eseguito", idempotencyKey);
             try {
                 return objectMapper.readValue(existingResult, Account.class);
-            } catch (JsonProcessingException e) {
+            } catch (JacksonException e) {
                 throw new RuntimeException("Errore deserializzazione", e);
             }
         }
@@ -83,7 +83,7 @@ public class AccountService {
         try {
             redisTemplate.opsForValue().set(redisKey, objectMapper.writeValueAsString(saved), Duration.ofHours(24));
             log.info("Risultato salvato in Redis per key {}", idempotencyKey);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             log.error("Errore serializzazione idempotency key {}", idempotencyKey, e);
         }
 

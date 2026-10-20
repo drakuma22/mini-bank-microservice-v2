@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
+import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -49,9 +50,13 @@ public class KafkaConsumerConfig {
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory());
 
+        // Conferma manuale: il listener chiama ack.acknowledge() quando ha finito di elaborare
+        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
+
         // Il "recoverer": cosa fare quando un messaggio fallisce DEFINITIVAMENTE
         DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template,
                 (record, exception) -> new TopicPartition(record.topic() + "-dlq", record.partition()));
+
 
         // L'error handler: quanti retry fare PRIMA di considerarlo fallito e mandarlo al recoverer
         DefaultErrorHandler errorHandler = new DefaultErrorHandler(

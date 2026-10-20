@@ -47,7 +47,7 @@ public class AccountClient {
         return Optional.empty();
     }
 
-    public AccountResponse updateBalanceFallback(String accountNumber, BigDecimal newBalance, Exception e) {
+    public AccountResponse updateBalanceFallback(String accountNumber, BigDecimal newBalance, String idempotency, Exception e) {
         log.error("Fallback for updateBalance - account: {}, error: {}", accountNumber, e.getMessage());
         throw new RuntimeException("account-service non disponibile, impossibile aggiornare il saldo");
     }

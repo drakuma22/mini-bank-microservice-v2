@@ -50,10 +50,17 @@ public class AccountService {
 
         Boolean isNew = redisTemplate.opsForValue().setIfAbsent(redisKey, "PROCESSING", Duration.ofHours(24));
 
-        if(isNew != null){
-            log.info("IDEMPOTENT HIT — key {} già processata, nessun update eseguito", idempotencyKey);
+        // La chiave esisteva già: operazione ripetuta
+        if (Boolean.FALSE.equals(isNew)) {
             String existingResult = redisTemplate.opsForValue().get(redisKey);
-            try{
+
+            // (1) La prima richiesta è ancora in corso: non c'è ancora un risultato da restituire
+            if ("PROCESSING".equals(existingResult)) {
+                throw new IllegalStateException("Operazione già in corso per la key " + idempotencyKey);
+            }
+
+            log.info("IDEMPOTENT HIT — key {} già processata, nessun update eseguito", idempotencyKey);
+            try {
                 return objectMapper.readValue(existingResult, Account.class);
             } catch (JsonProcessingException e) {
                 throw new RuntimeException("Errore deserializzazione", e);
@@ -62,9 +69,16 @@ public class AccountService {
 
         log.info("NUOVA OPERAZIONE — key {} mai vista, eseguo update sul DB", idempotencyKey);
 
-        Account account = findByAccountNumber(accountNumber);
-        account.setBalance(newBalance);
-        Account saved = save(account);
+        Account saved;
+        try {
+            Account account = findByAccountNumber(accountNumber);
+            account.setBalance(newBalance);
+            saved = save(account);
+        } catch (RuntimeException e) {
+            // (2) L'aggiornamento è fallito: libero la chiave, così un nuovo tentativo può riprovare
+            redisTemplate.delete(redisKey);
+            throw e;
+        }
 
         try {
             redisTemplate.opsForValue().set(redisKey, objectMapper.writeValueAsString(saved), Duration.ofHours(24));

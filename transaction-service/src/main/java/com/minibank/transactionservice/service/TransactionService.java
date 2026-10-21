@@ -9,7 +9,6 @@ import com.minibank.transactionservice.repository.TransactionRepository;
 import io.github.resilience4j.bulkhead.annotation.Bulkhead;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -26,7 +25,6 @@ public class TransactionService {
     private final TransactionRepository transactionRepository;
     private final AccountClient accountClient;
     private final TransactionProducer transactionProducer;
-    private final RedisTemplate<String, String> redisTemplate;
 
     @Bulkhead(name = "transferOperation")
     public Transaction execute(String fromAccountNumber,

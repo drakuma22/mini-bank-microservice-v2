@@ -2,7 +2,6 @@ package com.minibank.notificationservice.config;
 
 import tools.jackson.core.JacksonException;
 import com.minibank.notificationservice.event.TransactionEvent;
-import io.micrometer.core.instrument.config.validate.ValidationException;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -65,8 +64,7 @@ public class KafkaConsumerConfig {
         );
 
         errorHandler.addNotRetryableExceptions(
-                JacksonException.class,
-                ValidationException.class
+                JacksonException.class
         );
 
         factory.setCommonErrorHandler(errorHandler);

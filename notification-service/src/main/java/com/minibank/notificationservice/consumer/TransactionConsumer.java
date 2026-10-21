@@ -26,7 +26,7 @@ public class TransactionConsumer {
 
     @KafkaListener(topics = "transaction-completed", groupId = "notification-group")
     @Transactional
-    public void consume(TransactionEvent event, Acknowledgment ack) {
+    public void consumer(TransactionEvent event, Acknowledgment ack) {
         String id = event.getTransactionId().toString();
 
         // PASSO 1: controllo — questo id è già stato gestito?

@@ -1,6 +1,10 @@
 server:
   port: 8081
 
+app:
+  cache:
+    accounts-ttl: 5m
+
 spring:
   application:
     name: account-service

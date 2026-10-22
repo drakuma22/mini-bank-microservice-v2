@@ -1,5 +1,7 @@
 package com.minibank.accountservice.service;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import com.minibank.accountservice.entity.Account;
@@ -31,6 +33,7 @@ public class AccountService {
                 .orElseThrow(() -> new RuntimeException("Account not found with id: " + id));
     }
 
+    @Cacheable(value = "accounts", key = "#accountNumber")
     public Account findByAccountNumber(String accountNumber) {
         return accountRepository.findByAccountNumber(accountNumber)
                 .orElseThrow(() -> new RuntimeException("Account not found: " + accountNumber));
@@ -40,10 +43,12 @@ public class AccountService {
         return accountRepository.save(account);
     }
 
+    @CacheEvict(value = "accounts", allEntries = true)
     public void deleteById(Long id) {
         accountRepository.deleteById(id);
     }
 
+    @CacheEvict(value = "accounts", key = "#accountNumber")
     public Account updateBalanceIdempotence(String accountNumber, BigDecimal newBalance, String idempotencyKey) {
 
         String redisKey = "idempotency:" + idempotencyKey;

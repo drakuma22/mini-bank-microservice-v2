@@ -36,8 +36,10 @@ resilience4j:
         failure-rate-threshold: 50
         wait-duration-in-open-state: 10s
         permitted-number-of-calls-in-half-open-state: 3
-  thread-pool-bulkhead:
+        ignore-exceptions:
+          - org.springframework.web.client.HttpClientErrorException   # 4xx = risposta, non guasto
+  bulkhead:
     instances:
       transferOperation:
-        max-concurrent-calls: 15     # al massimo 15 trasferimenti contemporanei
-        max-wait-duration: 100ms     # il 16° aspetta fino a 100ms un posto libero, poi viene rifiutato
+        max-concurrent-calls: 15
+        max-wait-duration: 100ms

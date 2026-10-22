@@ -3,6 +3,7 @@ package com.minibank.transactionservice.client;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -31,13 +32,27 @@ public class AccountClient {
     }
 
     @CircuitBreaker(name = "accountService")
-    @Retry(name = "accountService", fallbackMethod = "updateBalanceFallback")
-    public AccountResponse updateBalance(String accountNumber, BigDecimal newBalance, String idempotency) {
-        log.info("Updating balance for account: {}", accountNumber);
-        return restClient.patch()
-                .uri("/accounts/number/{accountNumber}/balance", accountNumber)
-                .header("Idempotency-Key", idempotency)
-                .body(newBalance)
+    @Retry(name = "accountService")
+    public AccountResponse debit(String accountNumber, BigDecimal amount, String idempotencyKey) {
+        log.info("Debit {} on account {}", amount, accountNumber);
+        return restClient.post()
+                .uri("/accounts/number/{accountNumber}/debit", accountNumber)
+                .header("Idempotency-Key", idempotencyKey)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(amount)
+                .retrieve()
+                .body(AccountResponse.class);
+    }
+
+    @CircuitBreaker(name = "accountService")
+    @Retry(name = "accountService")
+    public AccountResponse credit(String accountNumber, BigDecimal amount, String idempotencyKey) {
+        log.info("Credit {} on account {}", amount, accountNumber);
+        return restClient.post()
+                .uri("/accounts/number/{accountNumber}/credit", accountNumber)
+                .header("Idempotency-Key", idempotencyKey)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(amount)
                 .retrieve()
                 .body(AccountResponse.class);
     }
@@ -45,10 +60,5 @@ public class AccountClient {
     public Optional<AccountResponse> getAccountFallback(String accountNumber, Exception e) {
         log.error("Fallback for getAccount - account: {}, error: {}", accountNumber, e.getMessage());
         return Optional.empty();
-    }
-
-    public AccountResponse updateBalanceFallback(String accountNumber, BigDecimal newBalance, String idempotency, Exception e) {
-        log.error("Fallback for updateBalance - account: {}, error: {}", accountNumber, e.getMessage());
-        throw new RuntimeException("account-service non disponibile, impossibile aggiornare il saldo");
     }
 }

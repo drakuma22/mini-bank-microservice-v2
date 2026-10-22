@@ -1,5 +1,8 @@
 package com.minibank.accountservice.service;
 
+import com.minibank.accountservice.exception.custom.AccountNotFoundException;
+import com.minibank.accountservice.exception.custom.InsufficientFundsException;
+import com.minibank.accountservice.exception.custom.OperationInProgressException;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import tools.jackson.core.JacksonException;
@@ -14,6 +17,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.List;
+import java.util.function.Supplier;
 
 @Service
 @RequiredArgsConstructor
@@ -30,13 +34,13 @@ public class AccountService {
 
     public Account findById(Long id) {
         return accountRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Account not found with id: " + id));
+                .orElseThrow(() -> new AccountNotFoundException("id: " + id));
     }
 
     @Cacheable(value = "accounts", key = "#accountNumber")
     public Account findByAccountNumber(String accountNumber) {
         return accountRepository.findByAccountNumber(accountNumber)
-                .orElseThrow(() -> new RuntimeException("Account not found: " + accountNumber));
+                .orElseThrow(() -> new AccountNotFoundException(accountNumber));
     }
 
     public Account save(Account account) {
@@ -49,21 +53,43 @@ public class AccountService {
     }
 
     @CacheEvict(value = "accounts", key = "#accountNumber")
-    public Account updateBalanceIdempotence(String accountNumber, BigDecimal newBalance, String idempotencyKey) {
+    public Account debit(String accountNumber, BigDecimal amount, String idempotencyKey) {
+        return executeIdempotent(idempotencyKey, () -> {
+            int updated = accountRepository.debit(accountNumber, amount);
+            if (updated == 0) {
+                // 0 righe: o il conto non esiste, o il saldo non basta. Distinguo i due casi.
+                if (accountRepository.findByAccountNumber(accountNumber).isEmpty()) {
+                    throw new AccountNotFoundException(accountNumber);
+                }
+                throw new InsufficientFundsException(accountNumber, amount);
+            }
+            // rilettura DOPO la modifica: serve solo a restituire il saldo aggiornato
+            return accountRepository.findByAccountNumber(accountNumber).orElseThrow();
+        });
+    }
 
+    @CacheEvict(value = "accounts", key = "#accountNumber")
+    public Account credit(String accountNumber, BigDecimal amount, String idempotencyKey) {
+        return executeIdempotent(idempotencyKey, () -> {
+            int updated = accountRepository.credit(accountNumber, amount);
+            if (updated == 0) {
+                throw new AccountNotFoundException(accountNumber);
+            }
+            return accountRepository.findByAccountNumber(accountNumber).orElseThrow();
+        });
+    }
+
+    // La logica di idempotenza, scritta una volta sola
+    private Account executeIdempotent(String idempotencyKey, Supplier<Account> operation) {
         String redisKey = "idempotency:" + idempotencyKey;
 
         Boolean isNew = redisTemplate.opsForValue().setIfAbsent(redisKey, "PROCESSING", Duration.ofHours(24));
 
-        // La chiave esisteva già: operazione ripetuta
         if (Boolean.FALSE.equals(isNew)) {
             String existingResult = redisTemplate.opsForValue().get(redisKey);
-
-            // (1) La prima richiesta è ancora in corso: non c'è ancora un risultato da restituire
             if ("PROCESSING".equals(existingResult)) {
-                throw new IllegalStateException("Operazione già in corso per la key " + idempotencyKey);
+                throw new OperationInProgressException("Operazione già in corso per la key " + idempotencyKey);
             }
-
             log.info("IDEMPOTENT HIT — key {} già processata, nessun update eseguito", idempotencyKey);
             try {
                 return objectMapper.readValue(existingResult, Account.class);
@@ -72,26 +98,21 @@ public class AccountService {
             }
         }
 
-        log.info("NUOVA OPERAZIONE — key {} mai vista, eseguo update sul DB", idempotencyKey);
+        log.info("NUOVA OPERAZIONE — key {} mai vista, eseguo", idempotencyKey);
 
-        Account saved;
+        Account result;
         try {
-            Account account = findByAccountNumber(accountNumber);
-            account.setBalance(newBalance);
-            saved = save(account);
+            result = operation.get();          // ← qui viene eseguito il debit o il credit
         } catch (RuntimeException e) {
-            // (2) L'aggiornamento è fallito: libero la chiave, così un nuovo tentativo può riprovare
-            redisTemplate.delete(redisKey);
+            redisTemplate.delete(redisKey);    // fallita: libero la chiave
             throw e;
         }
 
         try {
-            redisTemplate.opsForValue().set(redisKey, objectMapper.writeValueAsString(saved), Duration.ofHours(24));
-            log.info("Risultato salvato in Redis per key {}", idempotencyKey);
+            redisTemplate.opsForValue().set(redisKey, objectMapper.writeValueAsString(result), Duration.ofHours(24));
         } catch (JacksonException e) {
             log.error("Errore serializzazione idempotency key {}", idempotencyKey, e);
         }
-
-        return saved;
+        return result;
     }
 }

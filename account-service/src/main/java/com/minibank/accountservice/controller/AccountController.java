@@ -57,12 +57,19 @@ public class AccountController {
         return ResponseEntity.noContent().build();
     }
 
-    @PatchMapping("/number/{accountNumber}/balance")
-    public ResponseEntity<Account> updateBalance(
+    @PostMapping("/number/{accountNumber}/debit")
+    public ResponseEntity<Account> debit(
             @PathVariable String accountNumber,
             @RequestHeader("Idempotency-Key") String idempotencyKey,
-            @RequestBody BigDecimal newBalance) {
-        Account account = accountService.updateBalanceIdempotence(accountNumber, newBalance, idempotencyKey);
-        return ResponseEntity.ok(account);
+            @RequestBody BigDecimal amount) {
+        return ResponseEntity.ok(accountService.debit(accountNumber, amount, idempotencyKey));
+    }
+
+    @PostMapping("/number/{accountNumber}/credit")
+    public ResponseEntity<Account> credit(
+            @PathVariable String accountNumber,
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @RequestBody BigDecimal amount) {
+        return ResponseEntity.ok(accountService.credit(accountNumber, amount, idempotencyKey));
     }
 }

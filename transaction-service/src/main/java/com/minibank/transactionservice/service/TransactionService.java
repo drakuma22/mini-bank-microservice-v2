@@ -103,8 +103,11 @@ public class TransactionService {
 
     // Traduce l'errore di account-service in un motivo leggibile
     private String reasonFor(RuntimeException e) {
-        if (e instanceof HttpClientErrorException.UnprocessableEntity) return "Saldo insufficiente";
-        if (e instanceof HttpClientErrorException.NotFound) return "Conto non trovato";
+        if (e instanceof HttpClientErrorException clientError) {
+            int status = clientError.getStatusCode().value();
+            if (status == 422) return "Saldo insufficiente";
+            if (status == 404) return "Conto non trovato";
+        }
         return "account-service non disponibile";
     }
 

@@ -5,49 +5,47 @@ import com.minibank.notificationservice.event.TransactionEvent;
 import com.minibank.notificationservice.process_message.ProcessedMessage;
 import com.minibank.notificationservice.repository.NotificaRepository;
 import com.minibank.notificationservice.repository.ProcessedMessageRepository;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class TransactionConsumer {
 
-    @Autowired
-    private ProcessedMessageRepository processedMessageRepository;
-
-    @Autowired
-    private NotificaRepository notificaRepository;
+    private final ProcessedMessageRepository processedMessageRepository;
+    private final NotificaRepository notificaRepository;
+    private final TransactionTemplate transactionTemplate;
 
     @KafkaListener(topics = "transaction-completed", groupId = "notification-group")
-    @Transactional
-    public void consumer(TransactionEvent event, Acknowledgment ack) {
+    public void consume(TransactionEvent event, Acknowledgment ack) {
         String id = event.getTransactionId().toString();
 
-        // PASSO 1: controllo — questo id è già stato gestito?
+        // PASSO 1: già elaborato? Confermo e salto
         if (processedMessageRepository.existsById(id)) {
             log.info("Evento {} già processato, salto", id);
             ack.acknowledge();
             return;
         }
 
-        // PASSO 2: eseguo la logica di business reale
-        Notification notifica = new Notification(
-                event.getFromAccountNumber(),
-                event.getAmount(),
-                event.getStatus(),
-                LocalDateTime.now()
-        );
-        notificaRepository.save(notifica);
+        // PASSO 2 + 3 in un'unica transazione: o entrambi salvati, o nessuno
+        transactionTemplate.executeWithoutResult(status -> {
+            notificaRepository.save(new Notification(
+                    event.getFromAccountNumber(),
+                    event.getAmount(),
+                    event.getStatus(),
+                    LocalDateTime.now()
+            ));
+            processedMessageRepository.save(new ProcessedMessage(id, LocalDateTime.now(), "TRANSACTION_COMPLETED"));
+        });
 
-        // PASSO 3: registro l'id — STESSA transazione del passo 2
-        processedMessageRepository.save(new ProcessedMessage(id, LocalDateTime.now(), "TRANSACTION_COMPLETED"));
-
+        // PASSO 4: qui il commit è GIÀ avvenuto. Solo ora confermo a Kafka.
         ack.acknowledge();
     }
 }

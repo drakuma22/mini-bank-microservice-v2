@@ -1,5 +1,6 @@
 package com.minibank.accountservice.service;
 
+import com.minibank.accountservice.enums.AccountStatus;
 import com.minibank.accountservice.exception.custom.AccountNotFoundException;
 import com.minibank.accountservice.exception.custom.InsufficientFundsException;
 import com.minibank.accountservice.exception.custom.OperationInProgressException;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Supplier;
 
 @Service
@@ -43,8 +45,18 @@ public class AccountService {
                 .orElseThrow(() -> new AccountNotFoundException(accountNumber));
     }
 
-    public Account save(Account account) {
+    public Account open(String ownerName) {
+        Account account = new Account();
+        account.setOwnerName(ownerName);
+        account.setAccountNumber(generateAccountNumber());   // deciso dal server
+        account.setBalance(BigDecimal.ZERO);                 // deciso dal server
+        account.setStatus(AccountStatus.ACTIVE);            // deciso dal server
         return accountRepository.save(account);
+    }
+
+    // "IT" + 10 cifre casuali, per esempio IT0482913377
+    private String generateAccountNumber() {
+        return "IT" + String.format("%010d", ThreadLocalRandom.current().nextLong(10_000_000_000L));
     }
 
     @CacheEvict(value = "accounts", allEntries = true)

@@ -1,5 +1,6 @@
 package com.minibank.accountservice.entity;
 
+import com.minibank.accountservice.enums.AccountStatus;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.math.BigDecimal;
@@ -26,7 +27,5 @@ public class Account {
     @Column(nullable = false)
     private AccountStatus status;
 
-    public enum AccountStatus {
-        ACTIVE, SUSPENDED, CLOSED
-    }
+
 }

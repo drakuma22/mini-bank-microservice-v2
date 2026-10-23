@@ -1,5 +1,7 @@
 package com.minibank.transactionservice.entity;
 
+import com.minibank.transactionservice.enums.TransactionStatus;
+import com.minibank.transactionservice.enums.TransactionType;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.math.BigDecimal;
@@ -37,11 +39,4 @@ public class Transaction {
     @Column
     private String failureReason;
 
-    public enum TransactionType {
-        DEPOSIT, WITHDRAWAL, TRANSFER
-    }
-
-    public enum TransactionStatus {
-        COMPLETED, FAILED
-    }
 }

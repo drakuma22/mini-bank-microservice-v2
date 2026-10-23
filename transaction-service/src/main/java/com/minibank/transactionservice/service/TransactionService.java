@@ -2,11 +2,14 @@ package com.minibank.transactionservice.service;
 
 import com.minibank.transactionservice.client.AccountClient;
 import com.minibank.transactionservice.entity.Transaction;
+import com.minibank.transactionservice.enums.TransactionStatus;
+import com.minibank.transactionservice.enums.TransactionType;
 import com.minibank.transactionservice.event.TransactionEvent;
 import com.minibank.transactionservice.exception.custom.TransferFailedException;
 import com.minibank.transactionservice.producer.TransactionProducer;
 import com.minibank.transactionservice.repository.TransactionRepository;
 import io.github.resilience4j.bulkhead.annotation.Bulkhead;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,7 +33,7 @@ public class TransactionService {
     public Transaction execute(String fromAccountNumber,
                                String toAccountNumber,
                                BigDecimal amount,
-                               Transaction.TransactionType type) {
+                               @NotNull(message = "Il tipo di operazione è obbligatorio") TransactionType type) {
 
         // Un id per tutta l'operazione; ogni passo ne deriva una chiave di idempotenza propria
         String operationId = UUID.randomUUID().toString();
@@ -48,23 +51,23 @@ public class TransactionService {
                 case WITHDRAWAL -> accountClient.debit(fromAccountNumber, amount, operationId + ":debit");
                 case TRANSFER   -> transfer(fromAccountNumber, toAccountNumber, amount, operationId);
             }
-            transaction.setStatus(Transaction.TransactionStatus.COMPLETED);
+            transaction.setStatus(TransactionStatus.COMPLETED);
 
         } catch (TransferFailedException e) {
             // trasferimento fallito dopo l'addebito: il messaggio dice com'è finita la compensazione
-            transaction.setStatus(Transaction.TransactionStatus.FAILED);
+            transaction.setStatus(TransactionStatus.FAILED);
             transaction.setFailureReason(e.getMessage());
 
         } catch (RuntimeException e) {
             // fallito il primo passo: nessun soldo si è mosso
             log.warn("Operazione {} fallita: {}", operationId, e.getMessage());
-            transaction.setStatus(Transaction.TransactionStatus.FAILED);
+            transaction.setStatus(TransactionStatus.FAILED);
             transaction.setFailureReason(reasonFor(e));
         }
 
         Transaction saved = transactionRepository.save(transaction);
 
-        if (saved.getStatus() == Transaction.TransactionStatus.COMPLETED) {
+        if (saved.getStatus() == TransactionStatus.COMPLETED) {
             transactionProducer.publish(new TransactionEvent(
                     saved.getId(),
                     saved.getFromAccountNumber(),
